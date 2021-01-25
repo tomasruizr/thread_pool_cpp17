@@ -8,32 +8,7 @@
 #include <type_traits>        //invoke_result, enable_if, is_invocable
 #include <vector>             //vector
 
-class thread_pool {
-public:
-  thread_pool(size_t thread_count = std::thread::hardware_concurrency());
-  ~thread_pool();
-
-  // since std::thread objects are not copiable, it doesn't make sense for a
-  //  thread_pool to be copiable.
-  thread_pool(const thread_pool &) = delete;
-  thread_pool &operator=(const thread_pool &) = delete;
-
-  template <typename F, typename... Args,
-            std::enable_if_t<std::is_invocable_v<F &&, Args &&...>, int> = 0>
-  auto execute(F &&, Args &&...);
-
-private:
-  //_task_container_base and _task_container exist simply as a wrapper around a
-  //  MoveConstructible - but not CopyConstructible - Callable object. Since an
-  //  std::function requires a given Callable to be CopyConstructible, we
-  //  cannot construct one from a lambda function that captures a
-  //  non-CopyConstructible object (such as the packaged_task declared in
-  //  execute) - because a lambda capturing a non-CopyConstructible object is
-  //  not CopyConstructible.
-
-  //_task_container_base exists only to serve as an abstract base for
-  //  _task_container.
-  class _task_container_base {
+class _task_container_base {
   public:
     virtual ~_task_container_base(){};
 
@@ -61,6 +36,32 @@ private:
   };
 
   template <typename F> _task_container(F) -> _task_container<std::decay<F>>;
+
+class thread_pool {
+public:
+  thread_pool(size_t thread_count = std::thread::hardware_concurrency());
+  ~thread_pool();
+
+  // since std::thread objects are not copiable, it doesn't make sense for a
+  //  thread_pool to be copiable.
+  thread_pool(const thread_pool &) = delete;
+  thread_pool &operator=(const thread_pool &) = delete;
+
+  template <typename F, typename... Args,
+            std::enable_if_t<std::is_invocable_v<F &&, Args &&...>, int> = 0>
+  auto execute(F &&, Args &&...);
+
+private:
+  //_task_container_base and _task_container exist simply as a wrapper around a
+  //  MoveConstructible - but not CopyConstructible - Callable object. Since an
+  //  std::function requires a given Callable to be CopyConstructible, we
+  //  cannot construct one from a lambda function that captures a
+  //  non-CopyConstructible object (such as the packaged_task declared in
+  //  execute) - because a lambda capturing a non-CopyConstructible object is
+  //  not CopyConstructible.
+
+  //_task_container_base exists only to serve as an abstract base for
+  //  _task_container.
 
   std::vector<std::thread> _threads;
   std::queue<_task_ptr> _tasks;
